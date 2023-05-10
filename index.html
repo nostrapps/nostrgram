@@ -29,6 +29,72 @@
 <body>
     <!-- based on this: https://github.com/YunusEmreNalbant/css-chat-interface -->
     <script>
+// Some XSS mitigation
+(function () {
+  // Save the original functions
+  const originalInnerHTML = Object.getOwnPropertyDescriptor(Element.prototype, 'innerHTML').set;
+  const originalOuterHTML = Object.getOwnPropertyDescriptor(Element.prototype, 'outerHTML').set;
+  const originalEval = window.eval;
+  const originalDocumentWrite = document.write;
+  const originalDocumentWriteln = document.writeln;
+  const originalSetAttribute = Element.prototype.setAttribute;
+  const originalInsertAdjacentHTML = Element.prototype.insertAdjacentHTML;
+
+  // Sanitize function for HTML
+  function sanitizeHTML(html) {
+    // Use DOMPurify or another sanitization library to sanitize HTML content
+    const sanitized = DOMPurify.sanitize(html);
+    return sanitized; // Return the sanitized HTML
+  }
+
+  // Override the innerHTML and outerHTML setters
+  Object.defineProperty(Element.prototype, 'innerHTML', {
+    set: function (value) {
+      const sanitized = sanitizeHTML(value);
+      return originalInnerHTML.call(this, sanitized);
+    },
+  });
+
+  Object.defineProperty(Element.prototype, 'outerHTML', {
+    set: function (value) {
+      const sanitized = sanitizeHTML(value);
+      return originalOuterHTML.call(this, sanitized);
+    },
+  });
+
+  // Override potentially dangerous functions
+  window.eval = function (code) {
+    console.warn('Usage of eval is discouraged due to potential security risks.');
+    return originalEval(code);
+  };
+
+  document.write = function (html) {
+    const sanitized = sanitizeHTML(html);
+    return originalDocumentWrite.call(document, sanitized);
+  };
+
+  document.writeln = function (html) {
+    const sanitized = sanitizeHTML(html);
+    return originalDocumentWriteln.call(document, sanitized);
+  };
+
+  Element.prototype.setAttribute = function (name, value) {
+    if (name.toLowerCase() === 'onload' || name.toLowerCase().startsWith('on')) {
+      console.warn(`Setting potentially dangerous attribute "${name}" is discouraged.`);
+      return;
+    }
+    return originalSetAttribute.call(this, name, value);
+  };
+
+  Element.prototype.insertAdjacentHTML = function (position, html) {
+    const sanitized = sanitizeHTML(html);
+    return originalInsertAdjacentHTML.call(this, position, sanitized);
+  };
+
+})();
+        
+        
+        
         function isBech32( string ) {
             try {
                 var words = bech32.bech32.decode( string ).words;
